@@ -10,11 +10,7 @@ import { PlaywrightScraping } from "./playwrightScraping.mjs";
 
 dotenv.config();
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
-	connectTimeout: 30000,
-	headersTimeout: 30000,
-	bodyTimeout: 30000,
-});
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
 async function loadFailedStores() {
 	try {
@@ -31,8 +27,8 @@ const storesEntries = Object.entries(storesInformation); // esto es el nombre de
 const allProducts = [];
 const storeRuns = [];
 const storeToTest = null; // it's by entry name. Use null for ignoring
-const storeAmountToTest = 1;
-const storePagesToTest = 1;
+const storeAmountToTest = 999;
+const storePagesToTest = 999;
 const failedStores = await loadFailedStores();
 const globalSeen = new Set();
 let i = 0;

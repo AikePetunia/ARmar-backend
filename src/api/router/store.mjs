@@ -1,10 +1,5 @@
 import { Router } from "express";
-import fs from "node:fs";
-import {
-	getHostedProductImageUrl,
-	getHostedStoreImageUrl,
-	getStoreImage,
-} from "../utils/images.mjs";
+import { getProductImage, getStoreImage } from "../utils/images.mjs";
 import { sanitizeSearchQuery, sanitizeStoreId, sanitizeInteger } from "../utils/safeQuery.mjs";
 
 //http://localhost:3000/stores/armytech?page=1 ... http://localhost:3000/stores/armytech?page=2
@@ -15,7 +10,7 @@ export const createStoreRouter = ({ supabase }) => {
 		const storeId = req.params.store_id;
 		const imagePath = getStoreImage(storeId);
 
-		if (!imagePath || !fs.existsSync(imagePath)) {
+		if (!imagePath) {
 			return res.status(404).json({ error: "Imagen de la tienda no encontrada" });
 		}
 
@@ -31,7 +26,7 @@ export const createStoreRouter = ({ supabase }) => {
 				max: 100000,
 				fallback: 0,
 			});
-			const limit = 70;
+			const limit = 999;
 
 			let query = supabase
 				.from("stores")
@@ -50,7 +45,7 @@ export const createStoreRouter = ({ supabase }) => {
 
 			const enrichedHits = (data || []).map((store) => ({
 				...store,
-				store_image_url: getHostedStoreImageUrl(req, store.store_id),
+				store_image_url: getStoreImage(store.store_id),
 			}));
 
 			res.json({
@@ -114,10 +109,10 @@ export const createStoreRouter = ({ supabase }) => {
 
 			const enrichedData = {
 				...data,
-				store_image_url: getHostedStoreImageUrl(req, data.store_id),
+				store_image_url: getStoreImage(data.store_id),
 				products: (data.products || []).map((product) => ({
 					...product,
-					image_url: getHostedProductImageUrl(req, product.listing_id),
+					image_url: product.has_image ? getProductImage(product.listing_id) : undefined,
 				})),
 			};
 			res.json(enrichedData);

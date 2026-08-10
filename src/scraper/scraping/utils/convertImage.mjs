@@ -1,7 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
 import sharp from "sharp";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -12,6 +11,8 @@ dotenv.config();
 // No debe de repetir imagenes.
 // La sube a r2
 
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+// pongo en el set, listing id y hasImage
 const r2Client = new S3Client({
 	region: "auto",
 	endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -22,65 +23,86 @@ const r2Client = new S3Client({
 	},
 });
 
-// Luego inicializas el cliente...
+// ! la fuente de verdad es la db, no el bucket.
+const hasImageSet = new Set();
+const PAGE_SIZE = 1000;
+async function createSetFromDB() {
+	let count = 0;
+	while (count <= 20000) {
+		const { data: products, error } = await supabase
+			.from("products")
+			.select("listing_id, has_image")
+			.range(count, count + PAGE_SIZE - 1);
+
+		products.forEach((product) => {
+			if (product.has_image) {
+				hasImageSet.add(product.listing_id);
+			}
+		});
+		if (error || products.length < PAGE_SIZE) break;
+
+		count += PAGE_SIZE;
+	}
+}
+await createSetFromDB();
+
 const BUCKET_NAME = "products";
-const OUTPUT_DIR = "./src/api/images/products";
-
 export async function convertImage(image_url, listing_id) {
-	const fileName = `${listing_id}.avif`;
-	const output_path = path.join(OUTPUT_DIR, fileName);
-
-	if (fs.existsSync(output_path)) {
-		console.log(`image for ${listing_id} exists.`);
-		return;
+	let fileName = `${listing_id}.avif`;
+	let hasImage = false;
+	if (hasImageSet.has(listing_id)) {
+		hasImage = true;
+		console.log("imagen ya en bucket");
+		return hasImage;
 	}
 
+	// si el set tiene imagen segun el listing id, retorno temprano.
 	try {
-		if (!fs.existsSync(OUTPUT_DIR)) {
-			fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-		}
-
 		const response = await fetch(image_url);
 		if (!response.ok) {
-			throw new Error("error al descargar imagen", response.status);
+			throw new Error(`error al descargar imagen${response.status}`);
 		}
 
-		const arrayBuffer = await response.arrayBuffer();
-		const buffer = Buffer.from(arrayBuffer);
+		let arrayBuffer = await response.arrayBuffer();
+		let buffer = Buffer.from(arrayBuffer);
 
-		await sharp(buffer)
+		let image = await sharp(buffer)
 			.resize(512, 512, {
 				fit: "cover",
 				position: "center",
 			})
 			.avif({ quality: 80 })
-			.toFile(output_path);
+			.toBuffer();
 
-		console.log("calling func");
-		await uploadImage(output_path, fileName);
-		console.log(`Imagen procesada y guardada: ${output_path}`);
+		hasImage = await uploadImage(image, fileName);
+		if (hasImage) {
+			hasImageSet.add(listing_id);
+		}
+		return hasImage;
 	} catch (error) {
 		console.error(`fallo al procesar el listing_id ${listing_id}:`, error.message);
+		return hasImage;
 	}
 }
 
-async function uploadImage(localFilePath, fileName) {
+// recibe el buffer (o sea, imagen en la memoria ram) y la sube a r2.
+async function uploadImage(image, fileName) {
 	try {
-		const fileStream = fs.readFileSync(localFilePath);
-		const ext = path.extname(localFilePath).toLowerCase();
 		const uploadParams = {
 			Bucket: BUCKET_NAME, // bucket
 			Key: fileName, // nombre
-			Body: fileStream,
+			Body: image,
 			ContentType: "image/avif",
 		};
 
-		console.log(`Uploading ${localFilePath} to R2...`);
+		console.log(`Uploading ${fileName} to R2...`);
 		const command = new PutObjectCommand(uploadParams);
 		await r2Client.send(command);
 
 		console.log(`Uploaded, saved as: ${fileName}`);
+		return true;
 	} catch (e) {
 		console.log("error cloudfare", e);
+		return false;
 	}
 }

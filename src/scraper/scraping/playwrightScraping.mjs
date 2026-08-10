@@ -33,7 +33,7 @@ export class PlaywrightScraping {
 					}
 
 					const products = await this.extractProductsFromPage(categoryUrl, storeId);
-					if (!products.length) break;
+if (!products || products.length === 0) break;
 
 					allProducts = allProducts.concat(products);
 				} catch (error) {
@@ -61,7 +61,12 @@ export class PlaywrightScraping {
 
 						if (!title_raw || !productUrl) return null;
 
-						const imageUrl = product.querySelector(sel.image_url)?.src;
+						const imgElement = product.querySelector(sel.image_url);
+						const imageUrl =
+							imgElement.getAttribute("src") ||
+							imgElement.getAttribute("data-src") ||
+							imgElement.getAttribute("data-lazy-src") ||
+							imgElement.getAttribute("srcset");
 						const priceText = product.querySelector(sel.price)?.innerText?.trim();
 
 						return { title_raw, productUrl, imageUrl, priceText };
@@ -71,31 +76,28 @@ export class PlaywrightScraping {
 			selectors
 		);
 
-		return rawProducts
-			.map((raw) => {
-				const listing_id = `${storeId}_${hashCode(raw.productUrl)}`;
-				if (this.seen.has(listing_id)) return null;
-				this.seen.add(listing_id);
-
-				if (raw.imageUrl) {
-					convertImage(raw.imageUrl, listing_id);
-				}
-				return {
-					listing_id,
-					store_id: storeId,
-					source_page_url: categoryUrl,
-					product_url: raw.productUrl,
-					title_raw: raw.title_raw,
-					image_url: raw.imageUrl,
-					stock_status: true,
-					product_tags: [],
-					last_price: parsePrice(raw.priceText),
-					last_scraped_at: new Date().toISOString(),
-					missing: 0,
-					last_run_id: this.runId,
-				};
-			})
-			.filter((product) => product !== null);
+		for (const raw of rawProducts) {
+			const listing_id = `${storeId}_${hashCode(raw.productUrl)}`;
+			if (this.seen.has(listing_id)) continue;
+			this.seen.add(listing_id);
+			let hasImageBool = await convertImage(raw.imageUrl, listing_id);
+			return {
+				listing_id,
+				store_id: storeId,
+				source_page_url: categoryUrl,
+				product_url: raw.productUrl,
+				title_raw: raw.title_raw,
+				image_url: raw.imageUrl,
+				has_image: hasImageBool,
+				stock_status: true,
+				product_tags: [],
+				last_price: parsePrice(raw.priceText),
+				last_scraped_at: new Date().toISOString(),
+				missing: 0,
+				last_run_id: this.runId,
+			};
+		}
+		
 	}
 
 	buildUrl(category) {
@@ -103,3 +105,17 @@ export class PlaywrightScraping {
 		return `${store_url}${category}`;
 	}
 }
+
+
+/* No estoy viendo todos los atributos posibles en donde puede estar una imagen
+debo de subir la imagen a s3:
+- No repetir la imagen
+- No tenerla en local
+- Subir la imagen
+- El servirlo ya lo tengo
+
+
+Problemas colgados:
+- Por una cadena de funciones async await, el fetch de products tarda.
+
+ */

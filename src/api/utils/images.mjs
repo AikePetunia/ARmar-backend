@@ -1,30 +1,51 @@
 // trae las imagenes de r2
-import fs from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-
+import { S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
-dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const IMAGES_DIR = path.join(__dirname, "..", "images");
+dotenv.config({ path: path.join(__dirname, "../../../.env") });
 
+// en cloudflare podes devolver un link publico, o uno con autorizacion para entrar al bucket
+// actualmente es publico y dev, cambiar en prod posta
+export function getProductImage(listing_id) {
+	if (!/^[a-zA-Z0-9_-]+$/.test(listing_id)) return null;
+	const fileName = `${listing_id}.avif`;
+	const DEV_URL_PRODUCT = process.env.DEV_URL_PRODUCT;
+	const url = `${DEV_URL_PRODUCT}/${fileName}`;
+	return url;
+}
+
+export function getStoreImage(store_id) {
+	if (!/^[a-zA-Z0-9_-]+$/.test(store_id)) return null;
+	const fileName = `${store_id}.webp`;
+	const DEV_URL_STORE = process.env.DEV_URL_STORE;
+	const url = `${DEV_URL_STORE}/${fileName}`;
+	return url;
+}
+
+/*
+const accessKeyId = process.env.CLOUDFLARE_S3_ID?.trim();
+const secretAccessKey = process.env.CLOUDFLARE_S3_SECRET?.trim();
+const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+
+if (!accountId || !accessKeyId || !secretAccessKey) {
+	throw new Error("Faltan variables de entorno de R2");
+}
 const r2Client = new S3Client({
 	region: "auto",
-	endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+	endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
 	forcePathStyle: true,
 	credentials: {
-		accessKeyId: process.env.CLOUDFLARE_S3_ID,
-		secretAccessKey: process.env.CLOUDFLARE_S3_SECRET,
+		accessKeyId,
+		secretAccessKey,
 	},
 });
 
-// cambiar a Cloudfare R2
-export async function getProductImage(listing_id) {
-	if (!/^[a-zA-Z0-9_-]+$/.test(listing_id)) return null;
+getProductImage con url privada para evitar abuso; cambiar si pasa.
+export async function getProductImage(req, res, listing_id) {
+	//if (!/^[a-zA-Z0-9_-]+$/.test(listing_id)) return null;
 	const fileName = `${listing_id}.avif`;
 	try {
 		const command = new GetObjectCommand({
@@ -32,45 +53,13 @@ export async function getProductImage(listing_id) {
 			Key: fileName,
 		});
 
-		const response = await r2Client.send(command);
-
-		res.setHeader("Content-Type", "image/avif");
-		res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-
-		response.Body.pipe(res);
+		  const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 100 });
+			return signedUrl;
 	} catch (error) {
-		console.error("Error al obtener la imagen:", error.message);
+		console.error("Error al obtener la imagen:", error.message, "key:", fileName);
 		if (error.name === "NoSuchKey") {
-			return res.status(404).send("Imagen no encontrada");
+			return res.status(404);
 		}
-		res.status(500).send("Error interno del servidor");
+		//res.status(500).send("Error interno del servidor");
 	}
-}
-
-export function getStoreImage(store_id) {
-	if (!/^[a-zA-Z0-9_-]+$/.test(store_id)) return null;
-
-	return path.join(path.join(IMAGES_DIR, `stores/${store_id}.webp`));
-}
-
-function buildHostedUrl(req, route, identifier) {
-	if (!identifier) return null;
-
-	const host = req.get("host") || "localhost:3000";
-	const protocol = req.protocol || "http";
-	return `${protocol}://${host}/${route}/${encodeURIComponent(identifier)}`;
-}
-
-export function getHostedProductImageUrl(req, listing_id) {
-	const imagePath = getProductImage(listing_id);
-	if (!imagePath || !fs.existsSync(imagePath)) return null;
-
-	return buildHostedUrl(req, "products/images", listing_id);
-}
-
-export function getHostedStoreImageUrl(req, store_id) {
-	const imagePath = getStoreImage(store_id);
-	if (!imagePath || !fs.existsSync(imagePath)) return null;
-
-	return buildHostedUrl(req, "stores/images", store_id);
-}
+} */

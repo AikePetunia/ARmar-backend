@@ -27,45 +27,48 @@ export async function cheerioAxiosScraping(url, config, seen = new Set(), runId 
 		const $ = cheerio.load(html);
 		const products = [];
 		const storeId = config.store_id;
+		const attributes = ["data-src", "data-lazy-src", "srcset", "src"];
 
-		$(config.selectors.productWrapper).each((index, element) => {
+		const nodes = $(config.selectors.productWrapper).toArray();
+
+		for (const element of nodes) {
 			const titleRaw = $(element).find(config.selectors.title_raw).text().trim();
 			const productUrl = $(element).find(config.selectors.product_url).attr("href");
 
-			if (!titleRaw || !productUrl) return null;
+			if (!titleRaw || !productUrl) continue;
 
-			const imageUrl = $(element).find(config.selectors.image_url)?.attr("src");
+			const imgElement = $(element).find(config.selectors.image_url);
+			const imageUrl =
+				imgElement.attr("src") ||
+				imgElement.attr("data-src") ||
+				imgElement.attr("data-lazy-src") ||
+				imgElement.attr("srcset");
+
 			const priceText = $(element).find(config.selectors.price).text().trim();
-			//const installmentRaw = $(element).find(config.selectors.installmentRaw)?.text().trim();
 
 			const listing_id = `${storeId}_${hashCode(productUrl)}`;
-			if (seen.has(listing_id)) {
-				return;
-			}
+			if (seen.has(listing_id)) continue;
+
 			seen.add(listing_id);
 
-			convertImage(imageUrl, listing_id);
+			let hasImageBool = await convertImage(imageUrl, listing_id);
 
 			products.push({
-				listing_id: listing_id,
+				listing_id,
 				store_id: storeId,
 				source_page_url: url,
 				product_url: productUrl,
 				title_raw: titleRaw,
 				image_url: imageUrl,
-				stock_status: true, // en db sería true or false.
+				has_image: hasImageBool,
+				stock_status: true,
 				product_tags: [],
 				last_price: parsePrice(priceText),
 				last_scraped_at: new Date().toISOString(),
 				missing: 0,
 				last_run_id: runId,
-				// store_name: config.store_name,
-				// extra: {
-				// 	installments_raw: installmentRaw,
-				// },
-				// title_slug_id: titleSlugId,
 			});
-		});
+		}
 		return products;
 	} catch (error) {
 		// Axios guarda el status en error.response.status si el server respondió con error

@@ -1,10 +1,6 @@
 import { Router } from "express";
 import fs from "node:fs";
-import {
-	getProductImage,
-	getHostedProductImageUrl,
-	getHostedStoreImageUrl,
-} from "../utils/images.mjs";
+import { getProductImage, getStoreImage } from "../utils/images.mjs";
 import {
 	sanitizeSearchQuery,
 	toSearchTokens,
@@ -25,6 +21,7 @@ const PRODUCT_SELECT = `
 	product_url,
 	title_raw,
 	last_price,
+	has_image,
 	image_url,
 	stores!fk_store!inner (
 		store_name,
@@ -113,15 +110,14 @@ export const createProductRouter = ({ supabase }) => {
 			const { data, count, error } = await query.range(currentOffset, currentOffset + limit - 1);
 			if (error) throw error;
 
-			// datos igual q meilisearch para no cambiar la manera en que se consume desde el front
+			// al tener que esperar, promises, de awaits de tener imagenes en cloudflare, el obtener informacion de los productos hace que se tarde una locuta
 			const enrichedHits = (data || []).map(({ stores, ...product }) => ({
 				...product,
 				store_name: stores?.store_name ?? null,
 				store_url: stores?.store_url ?? null,
 				trust_factor: stores?.trust_factor ?? null,
-				store_image_url: getHostedStoreImageUrl(req, product.store_id),
-				image_url: getHostedProductImageUrl(req, product.listing_id),
-				original_image_url: product.image_url,
+				image_url: product.has_image ? getProductImage(product.listing_id) : null,
+				store_image_url: getStoreImage(product.store_id),
 			}));
 
 			res.json({
@@ -137,17 +133,6 @@ export const createProductRouter = ({ supabase }) => {
 			console.log("error", e);
 			res.status(500).json({ error: "Error interno del servidor" });
 		}
-	});
-
-	productController.get("/images/:listing_id", async (req, res) => {
-		const listingId = req.params.listing_id;
-		const imagePath = getProductImage(listingId);
-
-		if (!imagePath || !fs.existsSync(imagePath)) {
-			return res.status(404).json({ error: "Imagen no encontrada" });
-		}
-
-		res.sendFile(imagePath);
 	});
 
 	return productController;

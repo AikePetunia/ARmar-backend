@@ -50,7 +50,7 @@ export async function fetchScraping(config, runId) {
 		const image_required_key = fetchingFields.image_url.required_fields[0];
 		const image_extension = fetchingFields?.image_url?.image_extension;
 
-		productsArray.forEach((product) => {
+		for (const product of productsArray) {
 			const titleRaw = product[title_key];
 			const titleUrl = titleRaw.replace(/[\s-]/g, "_");
 			const productUrl = base_url + titleUrl ?? +"_" + product[id_key];
@@ -58,6 +58,7 @@ export async function fetchScraping(config, runId) {
 			if (titleRaw === "" || productUrl === "") return;
 
 			const price = getValueByPath(product, price_key);
+			// !aca no necesito corroborar si existe o no la imagen, simplemente siempre existe
 			let imageUrl;
 			if (image_url === "") {
 				imageUrl = getValueByPath(product, image_required_key);
@@ -67,25 +68,16 @@ export async function fetchScraping(config, runId) {
 			// dedupes keys doesn't exist (Endpoint doesn't give multiple same products.)
 			const listing_id = `${store_id}_${hashCode(productUrl)}`;
 
-			convertImage(imageUrl, listing_id);
-			const image_local = path.join(
-				__dirname,
-				"..",
-				"..",
-				"api",
-				"images",
-				"products",
-				listing_id + ".avif"
-			);
+			const hasImageBool = await convertImage(imageUrl, listing_id);
 
-			console.log("image_url", image_local);
-			products.push({
+			await products.push({
 				listing_id: listing_id,
 				store_id: store_id,
 				source_page_url: null, // no tiene una cat de origen
 				product_url: productUrl,
 				title_raw: titleRaw,
 				image_url: imageUrl,
+				has_image: hasImageBool,
 				stock_status: true, // en db sería true or false.
 				product_tags: [],
 				last_price: price || null,
@@ -93,7 +85,7 @@ export async function fetchScraping(config, runId) {
 				missing: 0,
 				last_run_id: runId,
 			});
-		});
+		}
 		return products;
 	} catch (e) {
 		console.log("error, hizo boom pq:", e);

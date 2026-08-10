@@ -60,7 +60,7 @@ export async function sendDiscordNotification({ type, taskName, status, stats = 
 
 	const payload = {
 		username: "[ARmar] Tasks notifier",
-		avatar_url: "https://aas-frontend.vercel.app/assets/eye-D1xYL9FF.gif",
+		avatar_url: "https://armarfrontend.vercel.app/assets/eye-D1xYL9FF.gif",
 		embeds: [
 			{
 				title: `Cron Job Finished: ${status.toUpperCase()}`,
