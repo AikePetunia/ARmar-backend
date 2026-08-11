@@ -41,21 +41,23 @@ export async function scrapeStores() {
 
 		const runId = Date.now();
 		const storeTasks = [];
+			const store_base_url = config.store_url;
 
 		// ! Solo axios interceptando un fetch.
 		if (config.public_fetching_url) {
-			console.log("tienda con public fetching", storeName);
+			console.log("Public fetching con", storeName);
 			storeTasks.push(limit(() => fetchScraping(config, runId)));
 		} else {
 			console.log("cheerio + axios con", storeName);
-			const storeToAccess = config.store_url;
 			let j = 0;
 			storeRuns.push({ store_id: config.store_id, run_id: runId });
 			for (const categoryPath of config.pages) {
 				if (j >= storePagesToTest) break;
-				let fullCategoryUrl = storeToAccess + categoryPath;
+				let fullCategoryUrl = store_base_url + categoryPath;
 				storeTasks.push(
-					limit(() => cheerioAxiosScraping(fullCategoryUrl, config, globalSeen, runId))
+					limit(() =>
+						cheerioAxiosScraping(fullCategoryUrl, store_base_url, config, globalSeen, runId)
+					)
 				);
 				j++;
 			}
@@ -65,8 +67,8 @@ export async function scrapeStores() {
 		let storeResults = await Promise.all(storeTasks);
 		let storeProducts = storeResults.flat();
 
-		if (storeProducts.length != 0 && !config.public_fetching_url) {
-			console.log("Cheerio no trajo nada, pruebo Playwright con", storeName);
+		if (storeProducts.length === 0 && !config.public_fetching_url) {
+			console.log("Playwright con", storeName);
 			const scraper = new PlaywrightScraping(config, runId, globalSeen);
 			storeProducts = await scraper.scrapeProducts();
 		}

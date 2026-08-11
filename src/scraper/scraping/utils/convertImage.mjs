@@ -46,14 +46,19 @@ async function createSetFromDB() {
 }
 await createSetFromDB();
 
-const BUCKET_NAME = "products";
-export async function convertImage(image_url, listing_id) {
+const BUCKET_NAME = "imgs";
+const BUCKET_PREFIX = "products";
+export async function convertImage(image_url, store_base_url, listing_id) {
 	let fileName = `${listing_id}.avif`;
 	let hasImage = false;
 	if (hasImageSet.has(listing_id)) {
 		hasImage = true;
-		console.log("imagen ya en bucket");
+		console.log("imagen ya en bucket", fileName);
 		return hasImage;
+	}
+
+	if (!image_url.includes("https")) {
+		image_url = store_base_url + "/" + image_url;
 	}
 
 	// si el set tiene imagen segun el listing id, retorno temprano.
@@ -90,16 +95,16 @@ async function uploadImage(image, fileName) {
 	try {
 		const uploadParams = {
 			Bucket: BUCKET_NAME, // bucket
-			Key: fileName, // nombre
+			Key: `${BUCKET_PREFIX}/${fileName}`, // nombre
 			Body: image,
 			ContentType: "image/avif",
 		};
 
-		console.log(`Uploading ${fileName} to R2...`);
+		//	console.log(`Uploading ${fileName} to R2...`);
 		const command = new PutObjectCommand(uploadParams);
 		await r2Client.send(command);
 
-		console.log(`Uploaded, saved as: ${fileName}`);
+		//console.log(`Uploaded, saved as: ${fileName}`);
 		return true;
 	} catch (e) {
 		console.log("error cloudfare", e);

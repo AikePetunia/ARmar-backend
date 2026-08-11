@@ -3,10 +3,11 @@ import { hashCode, parsePrice } from "./utils/utils.mjs";
 import { convertImage } from "./utils/convertImage.mjs";
 
 export class PlaywrightScraping {
-	constructor(config, runId = Date.now(), seen = new Set()) {
+	constructor(config, runId = Date.now(), seen = new Set(), store_base_url) {
 		this.config = config;
 		this.runId = runId;
 		this.seen = seen;
+		this.store_base_url = store_base_url;
 	}
 
 	async initialize() {
@@ -23,7 +24,7 @@ export class PlaywrightScraping {
 
 			for (const page of this.config.pages) {
 				const categoryUrl = this.buildUrl(page);
-
+				console.log("[Playwright] Extrañendo productos desde:", categoryUrl);
 				try {
 					try {
 						await this.page.goto(categoryUrl, { waitUntil: "networkidle", timeout: 30000 });
@@ -33,7 +34,7 @@ export class PlaywrightScraping {
 					}
 
 					const products = await this.extractProductsFromPage(categoryUrl, storeId);
-if (!products || products.length === 0) break;
+					if (!products || products.length === 0) continue;
 
 					allProducts = allProducts.concat(products);
 				} catch (error) {
@@ -50,7 +51,6 @@ if (!products || products.length === 0) break;
 
 	async extractProductsFromPage(categoryUrl, storeId) {
 		const { selectors } = this.config;
-
 		const rawProducts = await this.page.$$eval(
 			selectors.productWrapper,
 			(products, sel) => {
@@ -78,10 +78,14 @@ if (!products || products.length === 0) break;
 
 		for (const raw of rawProducts) {
 			const listing_id = `${storeId}_${hashCode(raw.productUrl)}`;
+
 			if (this.seen.has(listing_id)) continue;
 			this.seen.add(listing_id);
-			let hasImageBool = await convertImage(raw.imageUrl, listing_id);
-			return {
+
+			let hasImageBool = await convertImage(raw.imageUrl, this.store_base_url, listing_id);
+			let products = [];
+
+			products.push({
 				listing_id,
 				store_id: storeId,
 				source_page_url: categoryUrl,
@@ -95,9 +99,9 @@ if (!products || products.length === 0) break;
 				last_scraped_at: new Date().toISOString(),
 				missing: 0,
 				last_run_id: this.runId,
-			};
+			});
 		}
-		
+		return products;
 	}
 
 	buildUrl(category) {

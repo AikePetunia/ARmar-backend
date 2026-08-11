@@ -18,9 +18,15 @@ const scraperClient = axios.create({
 	},
 });
 
-export async function cheerioAxiosScraping(url, config, seen = new Set(), runId = Date.now()) {
+export async function cheerioAxiosScraping(
+	url,
+	store_base_url,
+	config,
+	seen = new Set(),
+	runId = Date.now()
+) {
 	try {
-		console.log("Extrayendo productos desde:", url);
+		console.log("[CheAxios] Extrayendo productos desde:", url);
 		const response = await scraperClient.get(url);
 		const html = response.data;
 
@@ -51,7 +57,7 @@ export async function cheerioAxiosScraping(url, config, seen = new Set(), runId 
 
 			seen.add(listing_id);
 
-			let hasImageBool = await convertImage(imageUrl, listing_id);
+			let hasImageBool = await convertImage(imageUrl, store_base_url, listing_id);
 
 			products.push({
 				listing_id,
