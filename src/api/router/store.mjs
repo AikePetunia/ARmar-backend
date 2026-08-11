@@ -95,6 +95,7 @@ export const createStoreRouter = ({ supabase }) => {
 					store_id,
                     product_url,
                     title_raw,
+					image_url,
                     last_price
                 )
             `
