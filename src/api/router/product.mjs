@@ -1,5 +1,4 @@
 import { Router } from "express";
-import fs from "node:fs";
 import { getProductImage, getStoreImage } from "../utils/images.mjs";
 import {
 	sanitizeSearchQuery,
@@ -10,8 +9,8 @@ import {
 } from "../utils/safeQuery.mjs";
 
 const MAX_PRICE = 10000000; // el producto más caro que vi es de 10m
-const MAX_MISSING = 10; // producto 10 veces que no se vio, "no esta en stock"
-const STOCK_DAYS = 5; // ultima vez visto hace 5 días
+const MAX_MISSING = 999; // producto 10 veces que no se vio, "no esta en stock"
+const STOCK_DAYS = 999; // ultima vez visto hace 5 días
 const MAX_LIMIT = 1000;
 const MAX_OFFSET = 100000;
 

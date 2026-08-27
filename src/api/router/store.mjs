@@ -69,7 +69,7 @@ export const createStoreRouter = ({ supabase }) => {
 			}
 			//paginado
 			const page = sanitizeInteger(req.query.page, { min: 1, max: 100000, fallback: 1 });
-			const limit = 30;
+			const limit = 150;
 			const from = (page - 1) * limit;
 			const to = from + limit - 1;
 
@@ -93,15 +93,15 @@ export const createStoreRouter = ({ supabase }) => {
                 products!fk_store (
                     listing_id,
 					store_id,
+					has_image,
                     product_url,
                     title_raw,
-					image_url,
                     last_price
                 )
             `
 				)
 				.eq("store_id", storeId)
-				.lt("products.missing", 5) // producto 5 veces que no se vio, "no existe".
+				.lt("products.missing", 50) // producto 5 veces que no se vio, "no existe".
 				.gte("products.last_scraped_at", dateLimitIso)
 				.range(from, to, { foreignTable: "products" })
 				.single();
@@ -113,7 +113,7 @@ export const createStoreRouter = ({ supabase }) => {
 				store_image_url: getStoreImage(data.store_id),
 				products: (data.products || []).map((product) => ({
 					...product,
-					image_url: product.has_image ? getProductImage(product.listing_id) : undefined,
+					image_url: product.has_image ? getProductImage(product.listing_id) : null,
 				})),
 			};
 			res.json(enrichedData);
