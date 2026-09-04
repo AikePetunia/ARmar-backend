@@ -31,6 +31,7 @@ src/scraper/config
 src/scraper/config/storesConfig.mjs
 src/scraper/scraperCron.mjs
 *CLAUDE.mjs
+.claude
 
 # images
 /src/api/images

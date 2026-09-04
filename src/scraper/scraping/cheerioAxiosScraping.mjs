@@ -7,7 +7,7 @@
 import * as cheerio from "cheerio";
 import axios from "axios";
 import { parsePrice, hashCode } from "./utils/utils.mjs";
-import { convertImage } from "./utils/convertImage.mjs";
+// import { convertImage } from "./utils/convertAndUploadImage.mjs";
 const scraperClient = axios.create({
 	timeout: 30000, // 15 segundos máximo antes de abortar si el server no responde
 	headers: {
@@ -26,7 +26,7 @@ export async function cheerioAxiosScraping(
 	runId = Date.now()
 ) {
 	try {
-		console.log("[CheAxios] Extrayendo productos desde:", url);
+		console.log("[Cheerio] Extrayendo productos desde:", url);
 		const response = await scraperClient.get(url);
 		const html = response.data;
 
@@ -57,7 +57,7 @@ export async function cheerioAxiosScraping(
 
 			seen.add(listing_id);
 
-			let hasImageBool = await convertImage(imageUrl, store_base_url, listing_id);
+			// const hasImageBool = await convertImage(imageUrl, store_base_url, listing_id);
 
 			products.push({
 				listing_id,
@@ -66,7 +66,7 @@ export async function cheerioAxiosScraping(
 				product_url: productUrl,
 				title_raw: titleRaw,
 				image_url: imageUrl,
-				has_image: hasImageBool,
+				has_image: imageUrl.trim() != "",
 				stock_status: true,
 				product_tags: [],
 				last_price: parsePrice(priceText),

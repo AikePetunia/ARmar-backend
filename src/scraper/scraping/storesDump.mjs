@@ -27,10 +27,10 @@ export async function storesDump() {
 		}
 
 		console.log("saving to DB");
-		const { data: dbStores, error } = await supabase.from("stores").upsert(stores).select();
+const { data: dbStores, error } = await supabase.from("stores").upsert(stores).select();
 
 		if (error) {
-			// throw error;
+			console.log("error", error);
 		}
 		console.log("Inserted to DB");
 

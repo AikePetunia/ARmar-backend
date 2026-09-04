@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 import { hashCode, parsePrice } from "./utils/utils.mjs";
-import { convertImage } from "./utils/convertImage.mjs";
+// import { convertImage } from "./utils/convertAndUploadImage.mjs";
 
 export class PlaywrightScraping {
 	constructor(config, runId = Date.now(), seen = new Set(), store_base_url) {
@@ -76,14 +76,14 @@ export class PlaywrightScraping {
 			selectors
 		);
 
+		let products = [];
 		for (const raw of rawProducts) {
 			const listing_id = `${storeId}_${hashCode(raw.productUrl)}`;
 
 			if (this.seen.has(listing_id)) continue;
 			this.seen.add(listing_id);
 
-			let hasImageBool = await convertImage(raw.imageUrl, this.store_base_url, listing_id);
-			let products = [];
+			// let hasImageBool = await convertImage(raw.imageUrl, this.store_base_url, listing_id);
 
 			products.push({
 				listing_id,
@@ -92,7 +92,7 @@ export class PlaywrightScraping {
 				product_url: raw.productUrl,
 				title_raw: raw.title_raw,
 				image_url: raw.imageUrl,
-				has_image: hasImageBool,
+				has_image: raw.imageUrl.trim() != "",
 				stock_status: true,
 				product_tags: [],
 				last_price: parsePrice(raw.priceText),

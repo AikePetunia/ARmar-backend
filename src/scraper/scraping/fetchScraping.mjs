@@ -1,6 +1,6 @@
 import axios from "axios";
 import { getValueByPath, getFirstValue, hashCode } from "./utils/utils.mjs";
-import { convertImage } from "./utils/convertImage.mjs";
+// import { convertImage } from "./utils/convertAndUploadImage.mjs";
 import path from "path";
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
@@ -55,10 +55,10 @@ export async function fetchScraping(config, runId) {
 			const titleUrl = titleRaw.replace(/[\s-]/g, "_");
 			const productUrl = base_url + titleUrl ?? +"_" + product[id_key];
 
-			if (titleRaw === "" || productUrl === "") return;
+			if (titleRaw === "" || productUrl === "") continue;
 
 			const price = getValueByPath(product, price_key);
-			// !aca no necesito corroborar si existe o no la imagen, simplemente siempre existe
+
 			let imageUrl;
 			if (image_url === "") {
 				imageUrl = getValueByPath(product, image_required_key);
@@ -68,23 +68,23 @@ export async function fetchScraping(config, runId) {
 			// dedupes keys doesn't exist (Endpoint doesn't give multiple same products.)
 			const listing_id = `${store_id}_${hashCode(productUrl)}`;
 
-			const hasImageBool = await convertImage(imageUrl, listing_id);
+			// const hasImageBool = await convertImage(imageUrl, null, listing_id);
 
-			await products.push({
-				listing_id: listing_id,
-				store_id: store_id,
-				source_page_url: null, // no tiene una cat de origen
-				product_url: productUrl,
-				title_raw: titleRaw,
-				image_url: imageUrl,
-				has_image: hasImageBool,
-				stock_status: true, // en db sería true or false.
-				product_tags: [],
-				last_price: price || null,
-				last_scraped_at: new Date().toISOString(),
-				missing: 0,
-				last_run_id: runId,
-			});
+			 products.push({
+					listing_id: listing_id,
+					store_id: store_id,
+					source_page_url: null, // no tiene una cat de origen
+					product_url: productUrl,
+					title_raw: titleRaw,
+					image_url: imageUrl,
+					has_image: imageUrl.trim() != "",
+					stock_status: true, // en db sería true or false.
+					product_tags: [],
+					last_price: price || null,
+					last_scraped_at: new Date().toISOString(),
+					missing: 0,
+					last_run_id: runId,
+				});
 		}
 		return products;
 	} catch (e) {
