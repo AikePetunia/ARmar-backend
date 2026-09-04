@@ -25,7 +25,7 @@ El proyecto tiene mucho futuro y features pensadas como:
 * **Open Source & Comunidad:** El código es abierto. Cualquier Pull Request, mejora de rendimiento o crítica constructiva es bienvenida para mejorar.
 
 Podés ver el como se pensó la arquitectura (superficialmente) desde acá:
-https://excalidraw.com/#json=JarbxLFhH4YzyCK9IYybR,KXsfPkmWHcrQT04ktMQmMw
+
 
 ## Contribuciones y Apoyo
 
